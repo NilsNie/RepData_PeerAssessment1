@@ -1,0 +1,184 @@
+---
+title: "Reproduceable Research - Week 2 Assignment"
+author: "Nils"
+date: "25 September 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE, ref.label = TRUE,}
+ opts_chunk$set(echo = TRUE)
+
+```
+
+# Submission Week 2 - Making research reproducable
+
+## Commit containing full submission
+
+1. Code for reading in the dataset and/or processing the data
+2. Histogram of the total number of steps taken each day
+3. Mean and median number of steps taken each day
+4. Time series plot of the average number of steps taken
+5. The 5-minute interval that, on average, contains the maximum number of steps
+6. Code to describe and show a strategy for imputing missing data
+7. Histogram of the total number of steps taken each day after missing values are imputed
+8. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+9. All of the R code needed to reproduce the results (numbers, plots, etc.) in the report
+
+These steps will now be performed one by one in the following subchapters.
+
+## 1. Read from the file.
+
+The working dorectory is already set. Therefore the file can be read with the following code:
+
+```{r read data}
+setwd("C:/Users/nilsn/Google Drive/Weiterbildung/R Programming/reproducablaresearch/week 2")
+input <- read.csv("activity.csv")
+input <- as.data.frame(input)
+input$date <- as.Date(as.character(input$date), "%Y-%m-%d")
+input$steps <- as.numeric(input$steps)
+input$interval <- as.numeric(input$interval)
+```
+
+Additionally the table is formatted as a data frame and the date column is formated as date.
+
+## 2. Histogram of the total number of steps taken each day
+
+As the summary for the date shows, each date includes 288 measurements. Therefore the input has to be aggregated by date to sum up the total steps per date.
+NA values are interpreted here as no steps.
+
+```{r}
+summary(input$date)
+no1 <- aggregate(input$steps,by = list(date=input$date), FUN = sum, na.rm = TRUE)
+hist(no1$x, xlab = "Steps per day", main = "Total number of steps taken each day")
+```
+
+## 3. Mean and median number of steps taken each day
+
+The next figure shows the mean & median of steps each day, if NA values are interpreted as 0 steps.
+
+```{r}
+mean(no1$x)
+median(no1$x)
+```
+
+## 4. Time series plot of the average number of steps taken
+
+The first step is to aggreagte the data on mean per day, the next step is to plot the data.
+
+```{r}
+no4 <- aggregate(input$steps,by = list(date=input$date), FUN = mean, na.rm = TRUE)
+plot(no4$date, no4$x, xlab = "date", ylab = "steps", main = "Average steps per day within an interval")
+```
+
+
+
+## 5. The 5-minute interval that, on average, contains the maximum number of steps
+
+
+```{r}
+no5 <- aggregate(input$steps,by = list(interval=input$interval), FUN = mean, na.rm = TRUE)
+plot(no5$interval, no5$x, xlab = "interval", ylab = "steps", main = "Average steps per interval")
+library(dplyr)
+filter(no5, x == max(x))
+```
+
+As the graph shows, the maximum lies by 'r filter(no5, x == max(x))'.
+
+## 6. Code to describe and show a strategy for imputing missing data
+
+Instead of using the claasical imputation code of impute, this data set uses the mice package to impute the missing values.
+
+For this reason in a first step, all variables need to be converted to numeric vectors. Afterwards the relevant items are imputed.
+
+```{r, cache = TRUE, results = 'hide'}
+input2 <- input
+input2$date <- as.numeric(input2$date)
+library(mice)
+full <- mice(input2, m=3, maxit = 50, meth = "pmm", seed = 500)
+completedData <- complete(full,1)
+```
+
+## 7. Histogram of the total number of steps taken each day after missing values are imputed
+
+The completed data set is added as new columns to the input data. From this the histogram is done, similiar to task 2.
+
+```{r}
+summary(completedData$date)
+input$steps2 <- completedData$steps
+rm(input2, completedData)
+no7 <- aggregate(input$steps2,by = list(date=input$date), FUN = sum, na.rm = TRUE)
+hist(no7$x, xlab = "Steps per day", main = "Total number of steps taken each day")
+```
+
+## 8. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+
+```{r}
+input$weekday <- weekdays(input$date)
+weedays <- unique(input$weekday)[1:5]
+weekends <- unique(input$weekday)[6:7]
+aveweekend <- input[which(input$weekday=="Samstag" |input$weekday=="Sonntag"),]
+avewd <- mean(aveweekend$steps2)
+aveweekday <- input[which(!input$weekday=="Samstag" & !input$weekday=="Sonntag"),]
+avewy <- mean(aveweekday$steps2)
+par(mfrow = c(1, 2))
+boxplot(aveweekday$steps2, ylim = c(0,40))
+boxplot(aveweekend$steps2, ylim = c(0,40))
+```
+
+## 9. All of the R code needed to reproduce the results (numbers, plots, etc.) in the report
+
+```{r, eval = FALSE, results = 'hide'}
+input <- as.data.frame(input)
+input$date <- as.Date(as.character(input$date), "%Y-%m-%d")
+input$steps <- as.numeric(input$steps)
+input$interval <- as.numeric(input$interval)
+summary(input$date)
+no1 <- aggregate(input$steps,by = list(date=input$date), FUN = sum, na.rm = TRUE)
+hist(no1$x, xlab = "Steps per day", main = "Total number of steps taken each day")
+mean(no1$x)
+median(no1$x)
+no4 <- aggregate(input$steps,by = list(date=input$date), FUN = mean, na.rm = TRUE)
+plot(no4$date, no4$x, xlab = "date", ylab = "steps", main = "Average steps per day within an interval")
+no5 <- aggregate(input$steps,by = list(interval=input$interval), FUN = mean, na.rm = TRUE)
+plot(no5$interval, no5$x, xlab = "interval", ylab = "steps", main = "Average steps per interval")
+library(dplyr)
+filter(no5, x == max(x))
+input2 <- input
+input2$date <- as.numeric(input2$date)
+library(mice)
+full <- mice(input2, m=3, maxit = 50, meth = "pmm", seed = 500)
+completedData <- complete(full,1)
+summary(completedData$date)
+input$steps2 <- completedData$steps
+rm(input2, completedData)
+no7 <- aggregate(input$steps2,by = list(date=input$date), FUN = sum, na.rm = TRUE)
+hist(no7$x, xlab = "Steps per day", main = "Total number of steps taken each day")
+input$weekday <- weekdays(input$date)
+weedays <- unique(input$weekday)[1:5]
+weekends <- unique(input$weekday)[6:7]
+aveweekend <- input[which(input$weekday=="Samstag" |input$weekday=="Sonntag"),]
+avewd <- mean(aveweekend$steps2)
+aveweekday <- input[which(!input$weekday=="Samstag" & !input$weekday=="Sonntag"),]
+avewy <- mean(aveweekday$steps2)
+par(mfrow = c(1, 2))
+boxplot(aveweekday$steps2, ylim = c(0,40))
+boxplot(aveweekend$steps2, ylim = c(0,40))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
